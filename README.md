@@ -10,8 +10,8 @@ With the advancement in technology, it is imperative for Ebuss to grow quickly i
 Build a comprehensive machine learning project that analyzes product reviews and predicts sentiment (Positive, Neutral, or Negative) using various ML algorithms.
 
 ## Solution / Implementation
-github link: https://github.com/shivkankan/Sentiment_Product_Recommendation_System
-Heroku (Application is Live): https://sentimentproductrecommendation-b32b7dcaf731.herokuapp.com/
+1. github link: https://github.com/shivkankan/Sentiment_Product_Recommendation_System
+2. Heroku (Application is Live): https://sentimentproductrecommendation-b32b7dcaf731.herokuapp.com/
 
 ## Project Overview
 
