@@ -57,9 +57,26 @@ class SentimentRecommenderModel:
             print("Model loaded successfully.")
             
             print("Loading TF-IDF vectorizer...")
-            self.vectorizer = pd.read_pickle(
-                SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.VECTORIZER)
-            print("Vectorizer loaded successfully.")
+            try:
+                # First try with pickle.load
+                self.vectorizer = pickle.load(open(
+                    SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.VECTORIZER, 'rb'))
+            except Exception as pickle_error:
+                print(f"Failed to load with pickle: {pickle_error}")
+                try:
+                    # Fallback to pd.read_pickle
+                    print("Trying fallback method with pd.read_pickle...")
+                    self.vectorizer = pd.read_pickle(
+                        SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.VECTORIZER)
+                except Exception as pandas_error:
+                    print(f"Failed to load with pd.read_pickle: {pandas_error}")
+                    raise ValueError(f"Could not load vectorizer with either method. Pickle error: {pickle_error}, Pandas error: {pandas_error}")
+            
+            # Validate that the vectorizer is fitted
+            if not hasattr(self.vectorizer, 'idf_'):
+                raise ValueError("TF-IDF vectorizer is not fitted. Please check the vectorizer file.")
+            
+            print(f"Vectorizer loaded successfully with {len(self.vectorizer.vocabulary_)} features.")
             
             print("Loading user rating data...")
             self.user_final_rating = pickle.load(open(
@@ -93,40 +110,67 @@ class SentimentRecommenderModel:
     """function to filter the product recommendations using the sentiment model and get the top 5 recommendations"""
 
     def getSentimentRecommendations(self, user):
-        if (user in self.user_final_rating.index):
-            # get the product recommedation using the trained ML model
-            recommendations = list(
-                self.user_final_rating.loc[user].sort_values(ascending=False)[0:20].index)
-            filtered_data = self.cleaned_data[self.cleaned_data.id.isin(
-                recommendations)]
-            # preprocess the text before tranforming and predicting
-            #filtered_data["reviews_text_cleaned"] = filtered_data["reviews_text"].apply(lambda x: self.preprocess_text(x))
-            # transfor the input data using saved tf-idf vectorizer
-            X = self.vectorizer.transform(
-                filtered_data["reviews_text_cleaned"].values.astype(str))
-            filtered_data["predicted_sentiment"] = self.model.predict(X)
-            temp = filtered_data[['id', 'predicted_sentiment']]
-            temp_grouped = temp.groupby('id', as_index=False).count()
-            temp_grouped["pos_review_count"] = temp_grouped.id.apply(lambda x: temp[(
-                temp.id == x) & (temp.predicted_sentiment == 1)]["predicted_sentiment"].count())
-            temp_grouped["total_review_count"] = temp_grouped['predicted_sentiment']
-            temp_grouped['pos_sentiment_percent'] = np.round(
-                temp_grouped["pos_review_count"]/temp_grouped["total_review_count"]*100, 2)
-            sorted_products = temp_grouped.sort_values(
-                'pos_sentiment_percent', ascending=False)[0:5]
-            return pd.merge(self.data, sorted_products, on="id")[["name", "brand", "manufacturer", "pos_sentiment_percent"]].drop_duplicates().sort_values(['pos_sentiment_percent', 'name'], ascending=[False, True])
+        try:
+            if (user in self.user_final_rating.index):
+                # get the product recommedation using the trained ML model
+                recommendations = list(
+                    self.user_final_rating.loc[user].sort_values(ascending=False)[0:20].index)
+                filtered_data = self.cleaned_data[self.cleaned_data.id.isin(
+                    recommendations)]
+                # preprocess the text before tranforming and predicting
+                #filtered_data["reviews_text_cleaned"] = filtered_data["reviews_text"].apply(lambda x: self.preprocess_text(x))
+                
+                # Check if we have data to process
+                if filtered_data.empty:
+                    print(f"No data found for user {user} recommendations")
+                    return None
+                
+                # Ensure we have the reviews_text_cleaned column
+                if 'reviews_text_cleaned' not in filtered_data.columns:
+                    print("Missing reviews_text_cleaned column in filtered_data")
+                    return None
+                
+                # transfor the input data using saved tf-idf vectorizer
+                print(f"Transforming {len(filtered_data)} reviews using TF-IDF vectorizer...")
+                try:
+                    X = self.vectorizer.transform(
+                        filtered_data["reviews_text_cleaned"].values.astype(str))
+                except Exception as e:
+                    print(f"Error during TF-IDF transformation: {str(e)}")
+                    return None
+                
+                filtered_data["predicted_sentiment"] = self.model.predict(X)
+                temp = filtered_data[['id', 'predicted_sentiment']]
+                temp_grouped = temp.groupby('id', as_index=False).count()
+                temp_grouped["pos_review_count"] = temp_grouped.id.apply(lambda x: temp[(
+                    temp.id == x) & (temp.predicted_sentiment == 1)]["predicted_sentiment"].count())
+                temp_grouped["total_review_count"] = temp_grouped['predicted_sentiment']
+                temp_grouped['pos_sentiment_percent'] = np.round(
+                    temp_grouped["pos_review_count"]/temp_grouped["total_review_count"]*100, 2)
+                sorted_products = temp_grouped.sort_values(
+                    'pos_sentiment_percent', ascending=False)[0:5]
+                return pd.merge(self.data, sorted_products, on="id")[["name", "brand", "manufacturer", "pos_sentiment_percent"]].drop_duplicates().sort_values(['pos_sentiment_percent', 'name'], ascending=[False, True])
 
-        else:
-            print(f"User name {user} doesn't exist")
+            else:
+                print(f"User name {user} doesn't exist")
+                return None
+        except Exception as e:
+            print(f"Error in getSentimentRecommendations: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
 
     """function to classify the sentiment to 1/0 - positive or negative - using the trained ML model"""
 
     def classify_sentiment(self, review_text):
-        review_text = self.preprocess_text(review_text)
-        X = self.vectorizer.transform([review_text])
-        y_pred = self.model.predict(X)
-        return y_pred
+        try:
+            review_text = self.preprocess_text(review_text)
+            X = self.vectorizer.transform([review_text])
+            y_pred = self.model.predict(X)
+            return y_pred
+        except Exception as e:
+            print(f"Error in classify_sentiment: {str(e)}")
+            return None
 
     """function to preprocess the text before it's sent to ML model"""
 
