@@ -8,11 +8,37 @@ import numpy as np
 import re
 import string
 import nltk
-nltk.download('stopwords')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('wordnet')
-nltk.download('omw-1.4')
+import os
+
+def download_nltk_data():
+    """Download NLTK data if not already present"""
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords', quiet=True)
+    
+    try:
+        nltk.data.find('taggers/averaged_perceptron_tagger')
+    except LookupError:
+        nltk.download('averaged_perceptron_tagger', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/wordnet')
+    except LookupError:
+        nltk.download('wordnet', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/omw-1.4')
+    except LookupError:
+        nltk.download('omw-1.4', quiet=True)
+
+# Download NLTK data
+download_nltk_data()
 
 
 class SentimentRecommenderModel:
@@ -24,17 +50,39 @@ class SentimentRecommenderModel:
     CLEANED_DATA = "cleaned-data.pkl"
 
     def __init__(self):
-        self.model = pickle.load(open(
-            SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.MODEL_NAME, 'rb'))
-        self.vectorizer = pd.read_pickle(
-            SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.VECTORIZER)
-        self.user_final_rating = pickle.load(open(
-            SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.RECOMMENDER, 'rb'))
-        self.data = pd.read_csv("dataset/sample30.csv")
-        self.cleaned_data = pickle.load(open(
-            SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.CLEANED_DATA, 'rb'))
-        self.lemmatizer = WordNetLemmatizer()
-        self.stop_words = set(stopwords.words('english'))
+        try:
+            print("Loading sentiment classification model...")
+            self.model = pickle.load(open(
+                SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.MODEL_NAME, 'rb'))
+            print("Model loaded successfully.")
+            
+            print("Loading TF-IDF vectorizer...")
+            self.vectorizer = pd.read_pickle(
+                SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.VECTORIZER)
+            print("Vectorizer loaded successfully.")
+            
+            print("Loading user rating data...")
+            self.user_final_rating = pickle.load(open(
+                SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.RECOMMENDER, 'rb'))
+            print("User rating data loaded successfully.")
+            
+            print("Loading sample data...")
+            if not os.path.exists("data/sample30.csv"):
+                raise FileNotFoundError("data/sample30.csv not found")
+            self.data = pd.read_csv("data/sample30.csv")
+            print("Sample data loaded successfully.")
+            
+            print("Loading cleaned data...")
+            self.cleaned_data = pickle.load(open(
+                SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.CLEANED_DATA, 'rb'))
+            print("Cleaned data loaded successfully.")
+            
+            self.lemmatizer = WordNetLemmatizer()
+            self.stop_words = set(stopwords.words('english'))
+            print("SentimentRecommenderModel initialization complete!")
+        except Exception as e:
+            print(f"Error initializing SentimentRecommenderModel: {str(e)}")
+            raise
 
     """function to get the top product 20 recommendations for the user"""
 
