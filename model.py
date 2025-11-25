@@ -1,3 +1,4 @@
+# Importing Libraries
 from nltk.tokenize import word_tokenize
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.corpus import wordnet
@@ -56,6 +57,7 @@ class SentimentRecommenderModel:
 
     def __init__(self):
         try:
+            # load the pickle files 
             print("Loading sentiment classification model...")
             self.model = pickle.load(open(
                 SentimentRecommenderModel.ROOT_PATH + SentimentRecommenderModel.MODEL_NAME, 'rb'))
@@ -146,7 +148,6 @@ class SentimentRecommenderModel:
                 filtered_data = self.cleaned_data[self.cleaned_data.id.isin(
                     recommendations)]
                 # preprocess the text before tranforming and predicting
-                #filtered_data["reviews_text_cleaned"] = filtered_data["reviews_text"].apply(lambda x: self.preprocess_text(x))
                 
                 # Check if we have data to process
                 if filtered_data.empty:
