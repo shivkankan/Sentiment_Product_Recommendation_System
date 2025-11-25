@@ -9,6 +9,11 @@ import re
 import string
 import nltk
 import os
+import warnings
+
+# Suppress version mismatch warnings for model loading
+warnings.filterwarnings("ignore", message="Trying to unpickle estimator")
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 def download_nltk_data():
     """Download NLTK data if not already present"""
@@ -72,11 +77,34 @@ class SentimentRecommenderModel:
                     print(f"Failed to load with pd.read_pickle: {pandas_error}")
                     raise ValueError(f"Could not load vectorizer with either method. Pickle error: {pickle_error}, Pandas error: {pandas_error}")
             
-            # Validate that the vectorizer is fitted
-            if not hasattr(self.vectorizer, 'idf_'):
-                raise ValueError("TF-IDF vectorizer is not fitted. Please check the vectorizer file.")
-            
-            print(f"Vectorizer loaded successfully with {len(self.vectorizer.vocabulary_)} features.")
+            # Validate that the vectorizer is fitted (handle version mismatches)
+            vectorizer_ok = False
+            try:
+                # Check for idf_ attribute (primary indicator of fitted vectorizer)
+                if hasattr(self.vectorizer, 'idf_'):
+                    vectorizer_ok = True
+                # Also check for vocabulary_ as backup
+                elif hasattr(self.vectorizer, 'vocabulary_') and len(self.vectorizer.vocabulary_) > 0:
+                    print("Warning: idf_ not found but vocabulary exists, proceeding...")
+                    vectorizer_ok = True
+                # Try a simple transform test
+                elif hasattr(self.vectorizer, 'transform'):
+                    try:
+                        test_transform = self.vectorizer.transform(["test"])
+                        if test_transform.shape[1] > 0:
+                            print("Warning: Vectorizer validation via test transform succeeded")
+                            vectorizer_ok = True
+                    except Exception as e:
+                        print(f"Vectorizer test transform failed: {e}")
+                
+                if not vectorizer_ok:
+                    raise ValueError("TF-IDF vectorizer appears not to be fitted properly.")
+                
+                vocab_size = len(self.vectorizer.vocabulary_) if hasattr(self.vectorizer, 'vocabulary_') else "unknown"
+                print(f"Vectorizer loaded successfully with {vocab_size} features.")
+            except Exception as e:
+                print(f"Error validating vectorizer: {e}")
+                raise
             
             print("Loading user rating data...")
             self.user_final_rating = pickle.load(open(
