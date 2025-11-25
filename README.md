@@ -12,6 +12,7 @@ Build a comprehensive machine learning project that analyzes product reviews and
 ## Solution / Implementation
 1. github link: https://github.com/shivkankan/Sentiment_Product_Recommendation_System
 2. Heroku (Application is Live): https://sentimentproductrecommendation-b32b7dcaf731.herokuapp.com/
+3. Google Drive link: https://drive.google.com/drive/folders/1skJhbLYymlgktQDMmzuUSh-laiF_-R37?usp=sharing
 
 ## Project Overview
 
